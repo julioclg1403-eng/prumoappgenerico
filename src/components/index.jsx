@@ -61,3 +61,90 @@ export function Sidebar({ itens, atual, onSelecionar, perfil }) {
     </aside>
   )
 }
+
+export function Segmentos({ opcoes, atual, onEscolher }) {
+  return (
+    <div className="row-flex" style={{ gap: 6, flexWrap: 'wrap', padding: '0 20px' }}>
+      {opcoes.map((op) => (
+        <button
+          key={op.valor} onClick={() => onEscolher(op.valor)}
+          className="btn btn-sm"
+          style={{
+            background: atual === op.valor ? 'var(--brand)' : 'var(--surface)',
+            color: atual === op.valor ? '#fff' : 'var(--text-1)',
+            border: '1px solid var(--border)', padding: '6px 12px', fontSize: 13,
+          }}
+        >
+          {op.rotulo}{op.contador !== undefined ? ` (${op.contador})` : ''}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function Sheet({ aberto, titulo, onFechar, children, rodape }) {
+  if (!aberto) return null
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(16,18,22,.4)', display: 'flex',
+        alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
+      }}
+      onClick={onFechar}
+    >
+      <div
+        className="card" style={{ width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="row-between" style={{ marginBottom: 12 }}>
+          <div className="t-strong" style={{ fontSize: 17 }}>{titulo}</div>
+          <button className="btn btn-ghost" onClick={onFechar} style={{ padding: 4 }}>✕</button>
+        </div>
+        <div className="stack-2">{children}</div>
+        {rodape && <div style={{ marginTop: 16 }}>{rodape}</div>}
+      </div>
+    </div>
+  )
+}
+
+export function Campo({ label, dica, children }) {
+  return (
+    <label className="stack-1" style={{ display: 'block' }}>
+      <span className="t-caption t-strong">{label}</span>
+      {children}
+      {dica && <span className="t-caption">{dica}</span>}
+    </label>
+  )
+}
+
+export function campoEstilo() {
+  return { padding: 10, borderRadius: 8, border: '1px solid var(--border)', width: '100%' }
+}
+
+export function ItemLista({ titulo, subtitulo, direita, onClick }) {
+  return (
+    <div
+      className="card row-between" onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default', padding: 12 }}
+    >
+      <div>
+        <div className="t-strong" style={{ fontSize: 14 }}>{titulo}</div>
+        {subtitulo && <div className="t-caption">{subtitulo}</div>}
+      </div>
+      {direita}
+    </div>
+  )
+}
+
+export function Confirmar({ aberto, titulo, texto, rotuloOk = 'Confirmar', onOk, onCancelar }) {
+  if (!aberto) return null
+  return (
+    <Sheet aberto titulo={titulo} onFechar={onCancelar}>
+      <p className="t-caption">{texto}</p>
+      <div className="row-flex" style={{ gap: 8 }}>
+        <button className="btn btn-secondary grow" style={{ flex: 1 }} onClick={onCancelar}>Cancelar</button>
+        <button className="btn btn-primary grow" style={{ flex: 1 }} onClick={onOk}>{rotuloOk}</button>
+      </div>
+    </Sheet>
+  )
+}

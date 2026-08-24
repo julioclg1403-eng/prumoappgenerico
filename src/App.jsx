@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { DadosProvider } from './lib/DadosContext'
 import Login from './pages/Login'
 import AppGestao from './pages/AppGestao'
 import AppCampo from './pages/AppCampo'
@@ -55,7 +56,9 @@ export default function App() {
     )
   }
 
-  return perfil.role === 'campo'
-    ? <AppCampo perfil={perfil} />
-    : <AppGestao perfil={perfil} />
+  return (
+    <DadosProvider perfil={perfil}>
+      {perfil.role === 'campo' ? <AppCampo perfil={perfil} /> : <AppGestao perfil={perfil} />}
+    </DadosProvider>
+  )
 }
