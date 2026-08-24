@@ -74,7 +74,7 @@ export function projetosQueDependemDe(projectId, projetos) {
   return projetos.filter((p) => (p.dependencias || []).some((d) => d.depende_de_id === projectId))
 }
 
-function somarDias(iso, dias) {
+export function somarDias(iso, dias) {
   const d = new Date(`${iso}T00:00:00`)
   d.setDate(d.getDate() + Number(dias))
   const mes = String(d.getMonth() + 1).padStart(2, '0')
@@ -98,4 +98,29 @@ export function simularAtraso(projectId, dias, projetos) {
   }
   visitar(projectId)
   return impactados
+}
+
+export function equipamentoVencido(e) {
+  return Boolean(e.previsao_devolucao) && e.situacao === 'ativo' && e.previsao_devolucao < hojeISO()
+}
+export function equipamentoProximo(e) {
+  return Boolean(e.previsao_devolucao) && e.situacao === 'ativo' && !equipamentoVencido(e) && e.previsao_devolucao <= somarDias(hojeISO(), 3)
+}
+
+/* Um só lugar pra juntar tudo que pede atenção — o painel inicial e o
+   contador do menu usam a mesma lista, pra não mostrar número
+   diferente do que a tela detalha (mesma regra da seção 5.8). */
+export function alertasConsolidados(daObra) {
+  const alertas = []
+  for (const p of pendenciasAtrasadas(daObra.issues)) {
+    alertas.push({ tipo: 'Pendência atrasada', titulo: p.titulo, detalhe: p.prazo ? `prazo ${formatarData(p.prazo)}` : '' })
+  }
+  for (const p of daObra.projects) {
+    if (projetoAtrasado(p)) alertas.push({ tipo: 'Projeto atrasado', titulo: p.titulo, detalhe: p.data_prevista ? `previsto ${formatarData(p.data_prevista)}` : '' })
+  }
+  for (const e of daObra.equipment) {
+    if (equipamentoVencido(e)) alertas.push({ tipo: 'Devolução vencida', titulo: e.identificacao, detalhe: formatarData(e.previsao_devolucao) })
+    else if (equipamentoProximo(e)) alertas.push({ tipo: 'Devolução próxima', titulo: e.identificacao, detalhe: formatarData(e.previsao_devolucao) })
+  }
+  return alertas
 }

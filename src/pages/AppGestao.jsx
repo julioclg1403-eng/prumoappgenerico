@@ -10,6 +10,8 @@ import Projetos from '../screens/Projetos'
 import Equipamentos from '../screens/Equipamentos'
 import Pendencias from '../screens/Pendencias'
 import Cadastros from '../screens/Cadastros'
+import Relatorios from '../screens/Relatorios'
+import Auditoria from '../screens/Auditoria'
 
 const ITENS_DESKTOP = [
   { chave: 'inicio', rotulo: 'Início' },
@@ -20,6 +22,8 @@ const ITENS_DESKTOP = [
   { chave: 'projetos', rotulo: 'Projetos' },
   { chave: 'equipamentos', rotulo: 'Equipamentos' },
   { chave: 'pendencias', rotulo: 'Pendências' },
+  { chave: 'relatorios', rotulo: 'Relatórios' },
+  { chave: 'auditoria', rotulo: 'Auditoria' },
   { chave: 'cadastros', rotulo: 'Cadastros' },
 ]
 
@@ -30,7 +34,8 @@ const ITENS_MOBILE = ITENS_DESKTOP.filter((it) => CHAVES_MOBILE.includes(it.chav
 
 const TELAS = {
   inicio: Inicio, diario: Diario, planejamento: Planejamento, cronograma: Cronograma,
-  requisicoes: Requisicoes, projetos: Projetos, equipamentos: Equipamentos, pendencias: Pendencias, cadastros: Cadastros,
+  requisicoes: Requisicoes, projetos: Projetos, equipamentos: Equipamentos, pendencias: Pendencias,
+  relatorios: Relatorios, auditoria: Auditoria, cadastros: Cadastros,
 }
 
 export default function AppGestao({ perfil }) {

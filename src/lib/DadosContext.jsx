@@ -40,7 +40,7 @@ export function DadosProvider({ perfil, children }) {
     setErro(null)
     const [
       worksites, companies, workers, locations, services, occurrenceTypes, dailyReports, plannedActivities, issues,
-      materials, scheduleItems, materialRequests, equipment, projects,
+      materials, scheduleItems, materialRequests, equipment, projects, auditLog,
     ] = await Promise.all([
       supabase.from('worksites').select('*').order('nome'),
       supabase.from('companies').select('*').eq('ativo', true).order('nome'),
@@ -56,10 +56,11 @@ export function DadosProvider({ perfil, children }) {
       supabase.from('material_requests').select(SELECT_REQUISICAO).order('created_at', { ascending: false }),
       supabase.from('equipment').select('*').eq('ativo', true).order('identificacao'),
       supabase.from('projects').select(SELECT_PROJETO).order('created_at', { ascending: false }),
+      supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(200),
     ])
     for (const r of [
       worksites, companies, workers, locations, services, occurrenceTypes, dailyReports, plannedActivities, issues,
-      materials, scheduleItems, materialRequests, equipment, projects,
+      materials, scheduleItems, materialRequests, equipment, projects, auditLog,
     ]) {
       if (r.error) { setErro(r.error.message); return }
     }
@@ -78,9 +79,21 @@ export function DadosProvider({ perfil, children }) {
       materialRequests: materialRequests.data,
       equipment: equipment.data,
       projects: projects.data,
+      auditLog: auditLog.data,
     })
     setObraId((atual) => atual || worksites.data?.[0]?.id || null)
   }, [])
+
+  /* Log de auditoria: cobre as operações que alteram o estado de um
+     registro pros outros (mudar status, confirmar recebimento,
+     dependências, simulação) — não cada campo editado. Falha aqui
+     nunca derruba a ação principal, que já foi salva antes disto. */
+  const registrarAuditoria = useCallback(async (acao, entidade, entidadeId, detalhe) => {
+    await supabase.from('audit_log').insert({
+      organization_id: perfil.organization_id, worksite_id: obraId, autor_id: perfil.id,
+      acao, entidade, entidade_id: entidadeId || null, detalhe: detalhe || null,
+    })
+  }, [perfil.organization_id, perfil.id, obraId])
 
   useEffect(() => { recarregar() }, [recarregar])
 
@@ -101,6 +114,7 @@ export function DadosProvider({ perfil, children }) {
       materialRequests: f(tudo.materialRequests),
       equipment: f(tudo.equipment),
       projects: f(tudo.projects),
+      auditLog: f(tudo.auditLog),
     }
   }, [tudo, obraId])
 
@@ -197,9 +211,9 @@ export function DadosProvider({ perfil, children }) {
   const mudarStatusPendencia = useCallback(async (id, status) => {
     const campos = { status, resolvido_em: status === 'resolvida' ? new Date().toISOString() : null }
     const ok = checar(await supabase.from('issues').update(campos).eq('id', id).select('id').single(), 'mudar o status')
-    if (ok) await recarregar()
+    if (ok) { await registrarAuditoria(`pendência → ${status}`, 'issue', id); await recarregar() }
     return Boolean(ok)
-  }, [recarregar])
+  }, [recarregar, registrarAuditoria])
 
   // ── cronograma físico ──
   const salvarItemCronograma = useCallback(async (item) => {
@@ -244,9 +258,9 @@ export function DadosProvider({ perfil, children }) {
       await supabase.from('material_requests').update({ status, atualizado_em: new Date().toISOString() }).eq('id', id).select('id').single(),
       'mudar o status da requisição',
     )
-    if (ok) await recarregar()
+    if (ok) { await registrarAuditoria(`requisição → ${status}`, 'material_request', id); await recarregar() }
     return Boolean(ok)
-  }, [recarregar])
+  }, [recarregar, registrarAuditoria])
 
   /* Recebimento parcial soma ao que já tinha sido recebido — nunca
      sobrescreve, pra não perder o histórico de entregas anteriores. */
@@ -258,9 +272,12 @@ export function DadosProvider({ perfil, children }) {
       await supabase.from('material_request_items').update({ quantidade_recebida: novaQuantidade }).eq('id', itemId).select('id').single(),
       'registrar o recebimento',
     )
-    if (ok) await recarregar()
+    if (ok) {
+      await registrarAuditoria('recebimento registrado', 'material_request_item', itemId, `+${quantidadeRecebidaAgora}`)
+      await recarregar()
+    }
     return Boolean(ok)
-  }, [tudo, recarregar])
+  }, [tudo, recarregar, registrarAuditoria])
 
   // ── equipamentos ──
   const salvarEquipamento = useCallback(async (item) => {
@@ -280,9 +297,12 @@ export function DadosProvider({ perfil, children }) {
   const salvarProjeto = useCallback(async (item) => {
     const linha = { ...item, organization_id: perfil.organization_id, worksite_id: obraId }
     const salvo = checar(await supabase.from('projects').upsert(linha).select('id').single(), 'salvar o projeto')
-    if (salvo) await recarregar()
+    if (salvo) {
+      if (item.status === 'recebido') await registrarAuditoria('projeto recebido', 'project', salvo.id)
+      await recarregar()
+    }
     return salvo
-  }, [perfil.organization_id, obraId, recarregar])
+  }, [perfil.organization_id, obraId, recarregar, registrarAuditoria])
 
   /* Impede ciclo: só deixa depender de algo que (direta ou
      indiretamente) não dependa do próprio projeto. */
@@ -304,15 +324,15 @@ export function DadosProvider({ perfil, children }) {
       await supabase.from('project_dependencies').insert({ project_id: projectId, depende_de_id: dependeDeId }).select('id').single(),
       'adicionar a dependência',
     )
-    if (ok) await recarregar()
+    if (ok) { await registrarAuditoria('dependência adicionada', 'project', projectId); await recarregar() }
     return Boolean(ok)
-  }, [criaCiclo, recarregar])
+  }, [criaCiclo, recarregar, registrarAuditoria])
 
   const removerDependencia = useCallback(async (id) => {
     const ok = checar(await supabase.from('project_dependencies').delete().eq('id', id).select('id').single(), 'remover a dependência')
-    if (ok) await recarregar()
+    if (ok) { await registrarAuditoria('dependência removida', 'project_dependency', id); await recarregar() }
     return Boolean(ok)
-  }, [recarregar])
+  }, [recarregar, registrarAuditoria])
 
   const salvarNotaProjeto = useCallback(async (projectId, texto) => {
     const ok = checar(
@@ -335,9 +355,10 @@ export function DadosProvider({ perfil, children }) {
     for (const item of impactados) {
       if (!item.dataSimulada) continue
       await supabase.from('projects').update({ data_prevista: item.dataSimulada }).eq('id', item.id)
+      await registrarAuditoria('simulação de atraso aplicada', 'project', item.id, `nova data prevista: ${item.dataSimulada}`)
     }
     await recarregar()
-  }, [recarregar])
+  }, [recarregar, registrarAuditoria])
 
   const limparErro = useCallback(() => setErro(null), [])
 

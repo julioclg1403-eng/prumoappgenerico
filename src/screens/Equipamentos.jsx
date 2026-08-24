@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useDados } from '../lib/DadosContext'
 import { PageHeader, ItemLista, Sheet, Campo, campoEstilo } from '../components'
-import { formatarData, hojeISO, ROTULO_SITUACAO_EQUIPAMENTO } from '../lib/dominio'
+import { formatarData, ROTULO_SITUACAO_EQUIPAMENTO, equipamentoVencido, equipamentoProximo } from '../lib/dominio'
 
 const VAZIO = { identificacao: '', tipo: '', fornecedor: '', situacao: 'ativo', local_atual: '', data_entrada: '', previsao_devolucao: '', observacao: '' }
 
@@ -18,8 +18,6 @@ export default function Equipamentos() {
     setEditando(null)
   }
 
-  const hoje = hojeISO()
-
   return (
     <div style={{ paddingBottom: 100 }}>
       <PageHeader titulo="Equipamentos" />
@@ -28,8 +26,8 @@ export default function Equipamentos() {
         <div className="stack-1">
           {dados.daObra.equipment.length === 0 && <div className="t-caption">Nenhum equipamento cadastrado.</div>}
           {dados.daObra.equipment.map((e) => {
-            const vencido = e.previsao_devolucao && e.previsao_devolucao < hoje && e.situacao === 'ativo'
-            const proximo = e.previsao_devolucao && !vencido && e.previsao_devolucao <= somarDias(hoje, 3)
+            const vencido = equipamentoVencido(e)
+            const proximo = equipamentoProximo(e)
             return (
               <ItemLista
                 key={e.id} titulo={e.identificacao}
@@ -71,10 +69,4 @@ export default function Equipamentos() {
       </Sheet>
     </div>
   )
-}
-
-function somarDias(iso, dias) {
-  const d = new Date(`${iso}T00:00:00`)
-  d.setDate(d.getDate() + dias)
-  return d.toISOString().slice(0, 10)
 }

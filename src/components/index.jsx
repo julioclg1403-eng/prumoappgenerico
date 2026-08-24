@@ -12,6 +12,7 @@ export function PageHeader({ titulo, subtitulo }) {
 export function BottomNav({ itens, atual, onSelecionar }) {
   return (
     <nav
+      className="app-bottomnav"
       style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)',
         borderTop: '1px solid var(--border)', display: 'flex', padding: '6px 0',
@@ -36,7 +37,7 @@ export function BottomNav({ itens, atual, onSelecionar }) {
 
 export function Sidebar({ itens, atual, onSelecionar, perfil }) {
   return (
-    <aside style={{ width: 220, borderRight: '1px solid var(--border)', background: 'var(--surface)', padding: 16, flex: 'none' }}>
+    <aside className="app-sidebar" style={{ width: 220, borderRight: '1px solid var(--border)', background: 'var(--surface)', padding: 16, flex: 'none' }}>
       <div style={{ fontWeight: 800, color: 'var(--brand)', fontSize: 20, marginBottom: 20 }}>Canteiro</div>
       <div className="stack-1">
         {itens.map((it) => (
@@ -143,6 +144,7 @@ export function ErroBanner({ erro, onFechar }) {
   if (!erro) return null
   return (
     <div
+      className="app-erro-banner"
       style={{
         position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
         background: 'var(--danger)', color: '#fff', padding: '10px 16px', borderRadius: 10,

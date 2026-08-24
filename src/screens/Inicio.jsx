@@ -1,6 +1,6 @@
-import { PageHeader } from '../components'
+import { PageHeader, ItemLista } from '../components'
 import { useDados } from '../lib/DadosContext'
-import { pendenciasEmAberto, pendenciasAtrasadas, hojeISO } from '../lib/dominio'
+import { pendenciasEmAberto, pendenciasAtrasadas, hojeISO, alertasConsolidados } from '../lib/dominio'
 
 export default function Inicio({ perfil }) {
   const dados = useDados()
@@ -8,6 +8,7 @@ export default function Inicio({ perfil }) {
   const emAberto = pendenciasEmAberto(dados.daObra.issues).length
   const atrasadas = pendenciasAtrasadas(dados.daObra.issues).length
   const planejadoHoje = dados.daObra.plannedActivities.filter((p) => p.data === hojeISO()).length
+  const alertas = alertasConsolidados(dados.daObra)
 
   return (
     <div>
@@ -34,6 +35,18 @@ export default function Inicio({ perfil }) {
             <span className="t-strong" style={{ color: atrasadas ? 'var(--danger)' : 'inherit' }}>{atrasadas}</span>
           </div>
         </div>
+
+        {alertas.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <div className="t-caption t-strong" style={{ marginBottom: 8 }}>Pede atenção ({alertas.length})</div>
+            <div className="stack-1">
+              {alertas.slice(0, 8).map((a, i) => (
+                <ItemLista key={i} titulo={a.titulo} subtitulo={`${a.tipo}${a.detalhe ? ` · ${a.detalhe}` : ''}`} />
+              ))}
+              {alertas.length > 8 && <div className="t-caption">+ {alertas.length - 8} outro(s).</div>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

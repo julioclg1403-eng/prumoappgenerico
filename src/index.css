@@ -70,3 +70,15 @@ button, input, textarea, select { font-family: inherit; font-size: inherit; }
 .stack-2 > * + * { margin-top: 16px; }
 
 .empty { text-align: center; color: var(--text-2); padding: 40px 20px; }
+
+.tabela-relatorio { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-relatorio th, .tabela-relatorio td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+.tabela-relatorio th { background: var(--bg); }
+
+/* Impressão = os mesmos componentes React, só escondendo o resto do
+   app (guia, "Relatórios e exportações"). Nada de gerador de PDF à
+   parte — window.print() nessa view. */
+@media print {
+  .app-sidebar, .app-bottomnav, .app-erro-banner { display: none !important; }
+  body { background: #fff; }
+}
