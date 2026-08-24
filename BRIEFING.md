@@ -30,8 +30,12 @@ migração de schema.)
       com equipe vinculada, ocorrências, rascunho/concluído), planejamento
       semanal, pendências (prioridade/prazo/status). Efetivo consolidado ainda
       não tem tela própria — hoje só é lido diário a diário.
-- [ ] Fase 3 — Planejamento e suprimentos (cronograma físico, requisições,
-      cotação/compra/recebimento, medições).
+- [x] **Fase 3 — Planejamento e suprimentos**: cronograma físico (com hierarquia,
+      previsto x realizado, percentual), catálogo de materiais, requisições
+      com fluxo completo (rascunho → enviado → cotação → aprovado → trânsito →
+      recebido) e recebimento parcial que soma sem sobrescrever histórico.
+      Vínculo automático planejamento/diário/cronograma e medições de pedidos
+      ainda não entraram.
 - [ ] Fase 4 — Gestão (projetos e dependências, contratações, reuniões,
       equipamentos, galeria).
 - [ ] Fase 5 — Saídas e qualidade (dashboard, PDFs/planilhas, notificações,
