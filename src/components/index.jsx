@@ -136,6 +136,25 @@ export function ItemLista({ titulo, subtitulo, direita, onClick }) {
   )
 }
 
+/* Toda ação que falha (erro do Supabase, regra de negócio bloqueando
+   como o ciclo de dependências) passa por aqui — sem isso, a pessoa
+   clica, nada muda na tela, e não sabe se funcionou ou não. */
+export function ErroBanner({ erro, onFechar }) {
+  if (!erro) return null
+  return (
+    <div
+      style={{
+        position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
+        background: 'var(--danger)', color: '#fff', padding: '10px 16px', borderRadius: 10,
+        maxWidth: '90vw', boxShadow: 'var(--shadow)', display: 'flex', alignItems: 'center', gap: 10,
+      }}
+    >
+      <span style={{ fontSize: 13 }}>{erro}</span>
+      <button onClick={onFechar} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+    </div>
+  )
+}
+
 export function Confirmar({ aberto, titulo, texto, rotuloOk = 'Confirmar', onOk, onCancelar }) {
   if (!aberto) return null
   return (

@@ -51,3 +51,51 @@ export function saldoPendente(item) {
 export function requisicaoRecebidaPorCompleto(requisicao) {
   return (requisicao.itens || []).length > 0 && requisicao.itens.every((it) => saldoPendente(it) <= 0)
 }
+
+export const ROTULO_STATUS_PROJETO = { nao_iniciado: 'Não iniciado', em_andamento: 'Em andamento', recebido: 'Recebido' }
+export const ROTULO_SITUACAO_EQUIPAMENTO = { ativo: 'Em uso', manutencao: 'Manutenção', devolvido: 'Devolvido' }
+
+/* Sinais calculados a partir dos dados — nunca um status manual, pra
+   não desalinhar da realidade (guia, seção 5.11). */
+export function projetoAtrasado(p) {
+  return Boolean(p.data_prevista) && p.status !== 'recebido' && p.data_prevista < hojeISO()
+}
+export function projetoSemPrazo(p) {
+  return !p.data_prevista && p.status !== 'recebido'
+}
+export function projetoAguardandoDependencia(p, projetos) {
+  return (p.dependencias || []).some((d) => {
+    const dep = projetos.find((x) => x.id === d.depende_de_id)
+    return dep && dep.status !== 'recebido'
+  })
+}
+
+export function projetosQueDependemDe(projectId, projetos) {
+  return projetos.filter((p) => (p.dependencias || []).some((d) => d.depende_de_id === projectId))
+}
+
+function somarDias(iso, dias) {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + Number(dias))
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dia}`
+}
+
+/* Percorre em cascata quem depende (direta ou indiretamente) do
+   projeto escolhido. Não altera nada — só calcula a prévia. */
+export function simularAtraso(projectId, dias, projetos) {
+  const impactados = []
+  const visitar = (id) => {
+    for (const dep of projetosQueDependemDe(id, projetos)) {
+      if (impactados.some((i) => i.id === dep.id)) continue
+      impactados.push({
+        id: dep.id, titulo: dep.titulo, dataAtual: dep.data_prevista,
+        dataSimulada: dep.data_prevista ? somarDias(dep.data_prevista, dias) : null,
+      })
+      visitar(dep.id)
+    }
+  }
+  visitar(projectId)
+  return impactados
+}

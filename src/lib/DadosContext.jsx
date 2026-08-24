@@ -25,6 +25,12 @@ const SELECT_REQUISICAO = `
   itens:material_request_items ( id, material_id, quantidade, unidade, observacao, quantidade_recebida )
 `
 
+const SELECT_PROJETO = `
+  id, worksite_id, titulo, disciplina, etapa, responsavel, data_prevista, data_recebido, status, observacoes, created_at,
+  dependencias:project_dependencies!project_dependencies_project_id_fkey ( id, depende_de_id ),
+  notas:project_notes ( id, texto, situacao, autor_id, created_at )
+`
+
 export function DadosProvider({ perfil, children }) {
   const [obraId, setObraId] = useState(perfil.worksite_id || null)
   const [tudo, setTudo] = useState(null)
@@ -34,7 +40,7 @@ export function DadosProvider({ perfil, children }) {
     setErro(null)
     const [
       worksites, companies, workers, locations, services, occurrenceTypes, dailyReports, plannedActivities, issues,
-      materials, scheduleItems, materialRequests,
+      materials, scheduleItems, materialRequests, equipment, projects,
     ] = await Promise.all([
       supabase.from('worksites').select('*').order('nome'),
       supabase.from('companies').select('*').eq('ativo', true).order('nome'),
@@ -48,10 +54,12 @@ export function DadosProvider({ perfil, children }) {
       supabase.from('materials').select('*').eq('ativo', true).order('nome'),
       supabase.from('schedule_items').select('*').order('ordem'),
       supabase.from('material_requests').select(SELECT_REQUISICAO).order('created_at', { ascending: false }),
+      supabase.from('equipment').select('*').eq('ativo', true).order('identificacao'),
+      supabase.from('projects').select(SELECT_PROJETO).order('created_at', { ascending: false }),
     ])
     for (const r of [
       worksites, companies, workers, locations, services, occurrenceTypes, dailyReports, plannedActivities, issues,
-      materials, scheduleItems, materialRequests,
+      materials, scheduleItems, materialRequests, equipment, projects,
     ]) {
       if (r.error) { setErro(r.error.message); return }
     }
@@ -68,6 +76,8 @@ export function DadosProvider({ perfil, children }) {
       materials: materials.data,
       scheduleItems: scheduleItems.data,
       materialRequests: materialRequests.data,
+      equipment: equipment.data,
+      projects: projects.data,
     })
     setObraId((atual) => atual || worksites.data?.[0]?.id || null)
   }, [])
@@ -89,6 +99,8 @@ export function DadosProvider({ perfil, children }) {
       materials: tudo.materials,
       scheduleItems: f(tudo.scheduleItems),
       materialRequests: f(tudo.materialRequests),
+      equipment: f(tudo.equipment),
+      projects: f(tudo.projects),
     }
   }, [tudo, obraId])
 
@@ -250,16 +262,101 @@ export function DadosProvider({ perfil, children }) {
     return Boolean(ok)
   }, [tudo, recarregar])
 
+  // ── equipamentos ──
+  const salvarEquipamento = useCallback(async (item) => {
+    const linha = { ...item, organization_id: perfil.organization_id, worksite_id: obraId }
+    const salvo = checar(await supabase.from('equipment').upsert(linha).select('id').single(), 'salvar o equipamento')
+    if (salvo) await recarregar()
+    return salvo
+  }, [perfil.organization_id, obraId, recarregar])
+
+  const arquivarEquipamento = useCallback(async (id) => {
+    const ok = checar(await supabase.from('equipment').update({ ativo: false }).eq('id', id).select('id').single(), 'arquivar o equipamento')
+    if (ok) await recarregar()
+    return Boolean(ok)
+  }, [recarregar])
+
+  // ── projetos e dependências ──
+  const salvarProjeto = useCallback(async (item) => {
+    const linha = { ...item, organization_id: perfil.organization_id, worksite_id: obraId }
+    const salvo = checar(await supabase.from('projects').upsert(linha).select('id').single(), 'salvar o projeto')
+    if (salvo) await recarregar()
+    return salvo
+  }, [perfil.organization_id, obraId, recarregar])
+
+  /* Impede ciclo: só deixa depender de algo que (direta ou
+     indiretamente) não dependa do próprio projeto. */
+  const criaCiclo = useCallback((projectId, dependeDeId) => {
+    const visitar = (id, alvo) => {
+      if (id === alvo) return true
+      const deps = (tudo.projects.find((p) => p.id === id)?.dependencias || [])
+      return deps.some((d) => visitar(d.depende_de_id, alvo))
+    }
+    return visitar(dependeDeId, projectId)
+  }, [tudo])
+
+  const adicionarDependencia = useCallback(async (projectId, dependeDeId) => {
+    if (projectId === dependeDeId || criaCiclo(projectId, dependeDeId)) {
+      setErro('Essa dependência criaria um ciclo (um projeto esperando por ele mesmo, direta ou indiretamente).')
+      return false
+    }
+    const ok = checar(
+      await supabase.from('project_dependencies').insert({ project_id: projectId, depende_de_id: dependeDeId }).select('id').single(),
+      'adicionar a dependência',
+    )
+    if (ok) await recarregar()
+    return Boolean(ok)
+  }, [criaCiclo, recarregar])
+
+  const removerDependencia = useCallback(async (id) => {
+    const ok = checar(await supabase.from('project_dependencies').delete().eq('id', id).select('id').single(), 'remover a dependência')
+    if (ok) await recarregar()
+    return Boolean(ok)
+  }, [recarregar])
+
+  const salvarNotaProjeto = useCallback(async (projectId, texto) => {
+    const ok = checar(
+      await supabase.from('project_notes').insert({ project_id: projectId, texto, autor_id: perfil.id }).select('id').single(),
+      'salvar a anotação',
+    )
+    if (ok) await recarregar()
+    return Boolean(ok)
+  }, [perfil.id, recarregar])
+
+  const resolverNotaProjeto = useCallback(async (id, situacao) => {
+    const ok = checar(await supabase.from('project_notes').update({ situacao }).eq('id', id).select('id').single(), 'mudar a anotação')
+    if (ok) await recarregar()
+    return Boolean(ok)
+  }, [recarregar])
+
+  /* Só grava quando a gestão confirma a simulação de atraso — até lá
+     é só cálculo em memória, nada muda no banco. */
+  const aplicarSimulacaoAtraso = useCallback(async (impactados) => {
+    for (const item of impactados) {
+      if (!item.dataSimulada) continue
+      await supabase.from('projects').update({ data_prevista: item.dataSimulada }).eq('id', item.id)
+    }
+    await recarregar()
+  }, [recarregar])
+
+  const limparErro = useCallback(() => setErro(null), [])
+
   const valor = useMemo(() => ({
     perfil, tudo, daObra, obraId, setObraId, erro, recarregar,
     salvarCadastro, arquivarCadastro, salvarDiario, salvarPlanejado, removerPlanejado,
     salvarPendencia, mudarStatusPendencia,
     salvarItemCronograma, removerItemCronograma,
     salvarRequisicao, mudarStatusRequisicao, registrarRecebimento,
+    salvarEquipamento, arquivarEquipamento,
+    salvarProjeto, adicionarDependencia, removerDependencia, salvarNotaProjeto, resolverNotaProjeto, aplicarSimulacaoAtraso,
+    limparErro,
   }), [
     perfil, tudo, daObra, obraId, erro, recarregar, salvarCadastro, arquivarCadastro, salvarDiario, salvarPlanejado, removerPlanejado,
     salvarPendencia, mudarStatusPendencia, salvarItemCronograma, removerItemCronograma,
     salvarRequisicao, mudarStatusRequisicao, registrarRecebimento,
+    salvarEquipamento, arquivarEquipamento,
+    salvarProjeto, adicionarDependencia, removerDependencia, salvarNotaProjeto, resolverNotaProjeto, aplicarSimulacaoAtraso,
+    limparErro,
   ])
 
   if (!tudo) {
