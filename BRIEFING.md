@@ -25,8 +25,11 @@ migração de schema.)
 - [x] **Fase 1 — Fundação**: repositório, ambientes, autenticação, `organizations`/
       `worksites`/`profiles` com RLS, layout responsivo dos dois perfis, design
       system base.
-- [ ] Fase 2 — Operação diária (cadastros, planejamento semanal, diário, efetivo,
-      pendências).
+- [x] **Fase 2 — Operação diária**: cadastros auxiliares (empresas, colaboradores,
+      locais, serviços), diário de obra (presença por equipe, frentes de serviço
+      com equipe vinculada, ocorrências, rascunho/concluído), planejamento
+      semanal, pendências (prioridade/prazo/status). Efetivo consolidado ainda
+      não tem tela própria — hoje só é lido diário a diário.
 - [ ] Fase 3 — Planejamento e suprimentos (cronograma físico, requisições,
       cotação/compra/recebimento, medições).
 - [ ] Fase 4 — Gestão (projetos e dependências, contratações, reuniões,
