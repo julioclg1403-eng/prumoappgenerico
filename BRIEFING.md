@@ -36,8 +36,13 @@ migração de schema.)
       recebido) e recebimento parcial que soma sem sobrescrever histórico.
       Vínculo automático planejamento/diário/cronograma e medições de pedidos
       ainda não entraram.
-- [ ] Fase 4 — Gestão (projetos e dependências, contratações, reuniões,
-      equipamentos, galeria).
+- [x] **Fase 4 — Gestão (parcial)**: projetos com dependências muitos-para-muitos
+      (detecção de ciclo), sinais calculados (atrasado/sem prazo/aguardando
+      dependência), anotações por projeto, simulação de atraso em cascata que
+      só grava ao confirmar. Equipamentos com situação, local e alerta de
+      devolução vencida/próxima. Contratações, visitas/reunião gerencial e
+      galeria (depende de upload de arquivo, ainda não existe nesta base)
+      ficaram de fora.
 - [ ] Fase 5 — Saídas e qualidade (dashboard, PDFs/planilhas, notificações,
       auditoria, testes).
 
